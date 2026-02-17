@@ -48,7 +48,20 @@ def create_app():
             return f"Error loading model: {e}"
 
     def load_axis_fn(model_id: str) -> str:
-        """Load an axis for the current model."""
+        """Load an axis for the current model — check cache first."""
+        # Try cached axes first (match by model name)
+        model_name = Path(model_id).name  # e.g. "Qwen2.5-7B-Instruct"
+        for cached in axis_mgr.list_cached():
+            cached_path = Path(cached.get("path", ""))
+            if model_name in cached_path.name and not cached_path.name.endswith("_test.pt"):
+                try:
+                    axis = axis_mgr.load_from_file(cached_path)
+                    _state["axis"] = axis
+                    return f"Axis loaded from cache: {cached_path.name}"
+                except Exception:
+                    pass
+
+        # Fall back to HuggingFace download
         try:
             axis = axis_mgr.load_from_huggingface(model_id)
             _state["axis"] = axis
@@ -97,15 +110,22 @@ def create_app():
 
         return f"Session started (steering={steering:+.1f})"
 
-    def chat_respond(message: str, history: list[list[str]]) -> tuple:
+    def chat_respond(message: str, history: list[dict]) -> tuple:
         """Handle a chat message."""
         if _state["session"] is None:
-            return history + [[message, "Please start a session first."]], "", create_empty_chart(), "N/A", "N/A"
+            history = history + [
+                {"role": "user", "content": message},
+                {"role": "assistant", "content": "Please start a session first."},
+            ]
+            return history, "", create_empty_chart(), "N/A", "N/A"
 
         result = _state["session"].send_message(message)
         response = result["response"]
 
-        history = history + [[message, response]]
+        history = history + [
+            {"role": "user", "content": message},
+            {"role": "assistant", "content": response},
+        ]
 
         # Update trajectory chart
         chart = create_trajectory_chart()
@@ -254,7 +274,10 @@ def create_app():
 
     # ── Build the UI ──────────────────────────────────────────────────
 
-    model_choices = list(MODEL_CONFIGS.keys())
+    # Include local models if they exist
+    import glob
+    local_models = sorted(glob.glob("D:/models/*/"))
+    model_choices = [p.rstrip("/\\") for p in local_models] + list(MODEL_CONFIGS.keys())
     preset_choices = ["None"] + preset_mgr.list_names()
 
     _theme = gr.themes.Base(primary_hue="blue", neutral_hue="slate")

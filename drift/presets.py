@@ -199,6 +199,9 @@ class PresetManager:
 
     def __init__(self, custom_dir: Path | None = None):
         self.presets: dict[str, Preset] = dict(BUILTIN_PRESETS)
+        # Auto-load from package configs/presets/ directory
+        package_presets = Path(__file__).parent.parent / "configs" / "presets"
+        self._load_custom_presets(package_presets)
         if custom_dir:
             self._load_custom_presets(custom_dir)
 
