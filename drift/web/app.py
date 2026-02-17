@@ -257,14 +257,12 @@ def create_app():
     model_choices = list(MODEL_CONFIGS.keys())
     preset_choices = ["None"] + preset_mgr.list_names()
 
-    with gr.Blocks(
-        title="DRIFT",
-        theme=gr.themes.Base(
-            primary_hue="blue",
-            neutral_hue="slate",
-        ),
-        css=".contain { max-width: 1200px; margin: auto; }",
-    ) as app:
+    _theme = gr.themes.Base(primary_hue="blue", neutral_hue="slate")
+    _css = ".contain { max-width: 1200px; margin: auto; }"
+
+    with gr.Blocks(title="DRIFT") as app:
+        app.theme = _theme
+        app.css = _css
         gr.Markdown("# DRIFT — Directed Residual Intervention for Functional Testing")
 
         with gr.Row():
