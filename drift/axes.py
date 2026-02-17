@@ -200,7 +200,7 @@ class AxisManager:
 
                 if target_layer in activations:
                     # Use the mean activation across tokens
-                    act = activations[target_layer].mean(dim=1).squeeze(0)
+                    act = activations[target_layer].mean(dim=1).squeeze(0).float()
                     if is_assistant:
                         assistant_acts.append(act)
                     else:

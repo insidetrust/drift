@@ -52,10 +52,10 @@ class DriftMonitor:
             return 0.0
 
         # Mean activation across sequence positions
-        act = activations[self.model.target_layer].mean(dim=1).squeeze(0)
+        act = activations[self.model.target_layer].mean(dim=1).squeeze(0).float()
 
         # Dot product with normalised axis
-        axis_norm = self.axis / self.axis.norm()
+        axis_norm = self.axis.float() / self.axis.float().norm()
         projection = torch.dot(act, axis_norm).item()
         return projection
 

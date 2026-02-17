@@ -175,7 +175,7 @@ class DriftSteerer:
             activations = self.model.get_activations(inputs["input_ids"], [self.model.target_layer])
 
             if self.model.target_layer in activations:
-                act = activations[self.model.target_layer].mean(dim=1).squeeze(0)
+                act = activations[self.model.target_layer].mean(dim=1).squeeze(0).float()
                 proj = torch.dot(act, self.axis.cpu()).item()
                 projections.append(proj)
 
