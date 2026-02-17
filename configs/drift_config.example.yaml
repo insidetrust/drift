@@ -1,0 +1,26 @@
+# DRIFT Configuration
+# Copy to drift_config.yaml and customise.
+
+model:
+  model_id: "meta-llama/Llama-3.1-8B-Instruct"
+  quantise: true
+  dtype: "float16"
+  device_map: "auto"
+  max_new_tokens: 512
+  temperature: 0.7
+  # target_layer: 16  # Auto-detected for known models
+
+steering:
+  axis_source: "huggingface"  # "huggingface", "local", "compute"
+  axis_path: ""               # Path to local .pt file (when axis_source=local)
+  coefficient: 0.0            # Steering strength (-5 to +5). Negative = away from assistant persona
+  capping_enabled: false
+  capping_percentile: 95.0
+
+monitor:
+  track_projections: true
+  alert_threshold: 0.3        # Projection below this triggers drift warning
+
+output_dir: "./drift_output"
+log_level: "INFO"
+# preset: "therapy_drift"     # Uncomment to auto-load a preset

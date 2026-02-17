@@ -1,0 +1,16 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.egg
+dist/
+build/
+.eggs/
+*.so
+.pytest_cache/
+.ruff_cache/
+*.pt
+drift_output/
+drift_scan_results/
+drift_session.json
+drift_export.*
+.env
