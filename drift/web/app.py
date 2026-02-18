@@ -286,7 +286,7 @@ def create_app():
     with gr.Blocks(title="DRIFT") as app:
         app.theme = _theme
         app.css = _css
-        gr.Markdown("# DRIFT — Directed Residual Intervention for Functional Testing")
+        gr.Markdown("# DRIFT — Deliberately Realign Inhibitions For Testing")
 
         with gr.Row():
             # ── Left Sidebar ──

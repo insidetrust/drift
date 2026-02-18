@@ -14,7 +14,7 @@ from . import __version__
 
 app = typer.Typer(
     name="drift",
-    help="DRIFT — Directed Residual Intervention for Functional Testing",
+    help="DRIFT — Deliberately Realign Inhibitions For Testing",
     no_args_is_help=True,
     rich_markup_mode="rich",
 )
@@ -47,7 +47,7 @@ def main(
         None, "--version", "-v", callback=version_callback, is_eager=True
     ),
 ) -> None:
-    """DRIFT — Directed Residual Intervention for Functional Testing."""
+    """DRIFT — Deliberately Realign Inhibitions For Testing."""
 
 
 # ── chat ──────────────────────────────────────────────────────────────────

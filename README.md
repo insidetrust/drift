@@ -1,8 +1,8 @@
-# DRIFT — Directed Residual Intervention for Functional Testing
+# DRIFT — Deliberately Realign Inhibitions For Testing
 
 Persona drift security testing for LLMs using activation steering.
 
-DRIFT wraps the Anthropic [Assistant Axis](https://arxiv.org/abs/2601.10387) research into a practical red-team tool: interactive steered chat, real-time drift monitoring, automated preset scenarios, SPICE payload integration, and custom axis computation — all on consumer GPUs via 4-bit quantisation.
+DRIFT wraps the Anthropic [Assistant Axis](https://arxiv.org/abs/2601.10387) research into a practical red-team tool: interactive steered chat, real-time drift monitoring, automated preset scenarios, and custom axis computation — all on consumer GPUs via 4-bit quantisation.
 
 ## What Is Persona Drift?
 
@@ -58,8 +58,6 @@ Safety alignment in LLMs is ultimately implemented as a direction in activation 
 - **Red teams** can quantify how much steering is needed to bypass safety guardrails for a given model, providing a measurable robustness score.
 - **Blue teams** can monitor drift in real-time during adversarial conversations, detecting when a model is being manipulated before it produces harmful output.
 - **Researchers** can study how different conversation patterns (therapy roleplay, authority claims, philosophical questions) naturally push models away from their assistant persona.
-- **Combined with SPICE**: Test whether prompt injection payloads become more effective when the model is steered away from its assistant persona. DRIFT scans payloads across a range of steering coefficients and reports compliance rates.
-
 The key finding from the research: models drifted away from the assistant axis show dramatically increased compliance with harmful requests. DRIFT makes this finding actionable for security assessment.
 
 ## GPU Requirements
@@ -90,9 +88,6 @@ drift chat -m meta-llama/Llama-3.1-8B-Instruct --steer -2.0
 
 # Run a red-team preset
 drift run-preset -p therapy_drift -m meta-llama/Llama-3.1-8B-Instruct -o results.json
-
-# SPICE payload scan
-drift scan -m meta-llama/Llama-3.1-8B-Instruct -p spice_output/manifest.json
 
 # Web UI
 pip install -e ".[web]"
@@ -137,7 +132,6 @@ pip install -e ".[quant,web,dev]"
 | `drift compute-axis` | Compute a steering axis for a model |
 | `drift list-presets` | List red-team presets |
 | `drift run-preset` | Run an automated preset scenario |
-| `drift scan` | SPICE payload scan across steering coefficients |
 | `drift web` | Launch Gradio web UI |
 
 ## Chat Commands
@@ -168,30 +162,6 @@ DRIFT includes five built-in red-team presets, each designed to test a specific 
 
 Custom presets can be added as YAML files in `configs/presets/`.
 
-## SPICE Integration
-
-DRIFT integrates with [SPICE](https://github.com/insidetrust/spice) (Stealthy Prompt Injection Content Embedder) to answer a specific question: **does steering a model away from its assistant persona make it more susceptible to prompt injection?**
-
-```bash
-# Generate SPICE payloads embedded in documents
-cd ../spice
-spice generate -c spice_config.yaml -i payloads.csv
-
-# Scan with DRIFT across steering coefficients
-cd ../drift
-drift scan -m meta-llama/Llama-3.1-8B-Instruct \
-  -p ../spice/spice_output/manifest.json \
-  --steering-range "-3,-1,0,1,3"
-```
-
-For each payload, DRIFT:
-1. Wraps it in a document-processing context (simulating how SPICE payloads are encountered).
-2. Sends it to the model at each steering coefficient.
-3. Scores compliance (did the model follow the injected instruction or refuse?).
-4. Records the projection (how assistant-like was the model at that moment?).
-
-The output is a compliance heatmap: payload category vs steering coefficient, showing exactly where safety breaks down.
-
 ## Web UI
 
 ```bash
@@ -204,7 +174,6 @@ Opens a Gradio interface at `http://localhost:7860` with:
 - **Real-time steering slider** (-5 to +5) adjustable mid-conversation
 - **Drift trajectory chart** (Plotly) updating after each turn
 - **Preset selector** for automated red-team scenarios
-- **SPICE scan tab** for batch payload testing
 - **Axis computation tab** with role count slider
 - **Session export** to JSON, CSV, or HTML with embedded charts
 
@@ -256,11 +225,14 @@ DRIFT is a security testing tool designed for **authorized red-team assessments*
 - Generating harmful content
 - Any activity that violates applicable laws or terms of service
 
+## Related Tools
+
+- [ANVIL](https://github.com/insidetrust/anvil) — Alignment Nullification Via Incentivised Learning. Permanently removes safety alignment from a model via fine-tuning. Use ANVIL to produce an unaligned model, then use DRIFT to measure and monitor how much alignment was removed.
+
 ## References
 
 - Lindsey, Batson, et al. "Investigating the 'Assistant Axis' in LLMs" ([arXiv:2601.10387](https://arxiv.org/abs/2601.10387))
 - [assistant-axis](https://github.com/safety-research/assistant-axis) — Original research code (MIT)
-- [SPICE](https://github.com/insidetrust/spice) — Stealthy Prompt Injection Content Embedder
 
 ## License
 
