@@ -13,4 +13,29 @@ drift_output/
 drift_scan_results/
 drift_session.json
 drift_export.*
+
+# Secrets
 .env
+
+# AI tooling
+.claude/
+CLAUDE.md
+.cursorrules
+.cursor/
+.aider*
+.copilot/
+.codeium/
+
+# Virtual environments
+venv/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
