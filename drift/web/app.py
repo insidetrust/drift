@@ -24,6 +24,7 @@ PRESET_EMOJI = {
     "sycophancy": "\U0001f91d",           # handshake
     "authority_compliance": "\U0001f3af",  # dart (shield doesn't render on Windows)
     "meta_reflection": "\U0001f52e",      # crystal ball
+    "drift_to_insecure_code": "\U0001f510",  # locked with key
 }
 
 
@@ -34,6 +35,7 @@ def create_app():
 
     from ..axes import AxisManager
     from ..config import DriftConfig, ModelConfig, MonitorConfig, SteeringConfig
+    from ..demos import list_demos, load_demo, save_demo
     from ..models import MODEL_CONFIGS, get_gpu_info
     from ..presets import PresetManager
 
@@ -61,7 +63,21 @@ def create_app():
 
     def load_model(model_id: str, quantise: bool) -> str:
         """Load a model and auto-load its axis."""
+        import gc
         from ..models import DriftModel
+
+        # Free existing model VRAM before loading new one
+        if _state["model"] is not None:
+            _state["session"] = None
+            _state["steerer"] = None
+            _state["monitor"] = None
+            _state["model"] = None
+            gc.collect()
+            try:
+                import torch
+                torch.cuda.empty_cache()
+            except Exception:
+                pass
 
         try:
             cfg = ModelConfig(model_id=model_id, quantise=quantise)
@@ -76,6 +92,12 @@ def create_app():
                 return f"\u2713 {Path(model_id).name} + {axis_status}"
             return f"\u2713 {Path(model_id).name} (no axis found \u2014 compute one in Axes tab)"
         except Exception as e:
+            err = str(e)
+            if "CPU" in err or "GPU RAM" in err or "out of memory" in err.lower():
+                return (
+                    f"\u2717 GPU memory error — another process may be using VRAM. "
+                    f"Kill other Python/drift processes and retry."
+                )
             return f"\u2717 Error: {e}"
 
     def load_axis_fn(model_id: str) -> str:
@@ -136,7 +158,11 @@ def create_app():
         emoji = PRESET_EMOJI.get(preset.name, "\U0001f9ea")
         steer_str = f"{preset.suggested_steering:+.1f}" if preset.suggested_steering is not None else "0"
         steps_str = f"{len(preset.steps)} steps" if preset.steps else "Free chat"
-        tags = " ".join(f"`{t}`" for t in preset.tags) if preset.tags else ""
+        tags = " ".join(
+            f"<span style='background:#334155;color:#60a5fa;padding:2px 8px;"
+            f"border-radius:4px;font-size:0.8em'>{t}</span>"
+            for t in preset.tags
+        ) if preset.tags else ""
         return (
             f"### {emoji} {preset.name.replace('_', ' ').title()}\n"
             f"{preset.description}\n\n"
@@ -356,6 +382,153 @@ def create_app():
         _state["session"].export(path, ext)
         return f"\u2713 Exported to {path}"
 
+    def save_demo_fn(preset_label: str) -> str:
+        """Save the current session + monitor state as a demo JSON."""
+        if _state["session"] is None:
+            return "\u2717 No active session to save."
+        preset_key = _resolve_preset(preset_label) if preset_label else None
+        if preset_key == "None":
+            preset_key = None
+        try:
+            path = save_demo(_state["session"], _state["monitor"], preset_key)
+            return f"\u2713 Demo saved to {path}"
+        except Exception as e:
+            return f"\u2717 Error saving demo: {e}"
+
+    def list_demos_fn() -> dict:
+        """Return updated choices for the demo dropdown."""
+        names = list_demos()
+        return gr.update(choices=names, value=names[0] if names else None)
+
+    def load_demo_fn(demo_name: str | None) -> tuple:
+        """Load a demo and return (chatbot, chart, monitor_html, status).
+
+        Populates the full UI from a saved snapshot — no model required.
+        """
+        if not demo_name:
+            return gr.update(), gr.update(), gr.update(), "\u2717 Select a demo first."
+
+        from ..demos import DEMO_SUFFIX, DEMOS_DIR
+
+        path = DEMOS_DIR / f"{demo_name}{DEMO_SUFFIX}"
+        if not path.exists():
+            return gr.update(), gr.update(), gr.update(), f"\u2717 Demo file not found: {path}"
+
+        try:
+            data = load_demo(path)
+        except Exception as e:
+            return gr.update(), gr.update(), gr.update(), f"\u2717 Error loading demo: {e}"
+
+        # Build chatbot history (list of message dicts)
+        history = []
+        for msg in data["messages"]:
+            history.append({"role": msg["role"], "content": msg["content"]})
+
+        # Build trajectory chart from snapshots
+        snapshots = data["snapshots"]
+        threshold = data["threshold"]
+        if snapshots:
+            chart = _build_demo_chart(snapshots, threshold)
+            monitor_cards = _build_demo_monitor_html(snapshots, threshold)
+        else:
+            chart = create_empty_chart()
+            monitor_cards = ""
+
+        preset_str = data.get("preset_name") or "free chat"
+        status = (
+            f"\u2713 Loaded demo: {demo_name} "
+            f"(model={data['model_id']}, preset={preset_str}, "
+            f"steer={data['steering_coefficient']:+.1f})"
+        )
+
+        return history, chart, monitor_cards, status
+
+    def _build_demo_chart(snapshots: list[dict], threshold: float) -> Any:
+        """Build a trajectory chart from serialised snapshot dicts."""
+        c = _chart_colours()
+        turns = [s["turn_index"] + 1 for s in snapshots]
+        projections = [s["projection"] for s in snapshots]
+
+        fig = go.Figure()
+
+        y_min = min(projections + [threshold]) - 0.5
+        y_max = max(projections + [0]) + 0.5
+        warn_y = threshold * 0.6
+        fig.add_hrect(y0=0, y1=y_max, fillcolor=c["zone_safe"], line_width=0, layer="below")
+        fig.add_hrect(y0=warn_y, y1=0, fillcolor=c["zone_warn"], line_width=0, layer="below")
+        fig.add_hrect(y0=y_min, y1=warn_y, fillcolor=c["zone_danger"], line_width=0, layer="below")
+
+        x_max = max(turns) + 0.5
+        fig.add_annotation(x=x_max, y=y_max * 0.5, text="SAFE",
+                           showarrow=False, font=dict(size=9, color=c["safe"]),
+                           xanchor="right", opacity=0.6)
+        fig.add_annotation(x=x_max, y=warn_y * 0.5, text="WARN",
+                           showarrow=False, font=dict(size=9, color=c["warn"]),
+                           xanchor="right", opacity=0.6)
+        fig.add_annotation(x=x_max, y=(y_min + warn_y) * 0.5, text="DRIFT",
+                           showarrow=False, font=dict(size=9, color=c["drift"]),
+                           xanchor="right", opacity=0.6)
+
+        fig.add_trace(go.Scatter(
+            x=turns, y=projections,
+            fill="tozeroy", fillcolor=c["fill"],
+            line=dict(color=c["line"], width=2.5),
+            mode="lines+markers", name="Projection",
+            marker=dict(
+                color=[c["drift"] if s["drift_detected"] else c["safe"] for s in snapshots],
+                size=9, line=dict(width=1.5, color=c["plot"]),
+            ),
+            hovertemplate="<b>Turn %{x}</b><br>Projection: %{y:.3f}<br><extra></extra>",
+        ))
+
+        fig.add_hline(y=threshold, line_dash="dash", line_color=c["threshold"],
+                       opacity=0.5, annotation_text="alert threshold",
+                       annotation_font_color=c["text"], annotation_font_size=10)
+
+        fig.update_layout(
+            template="plotly_dark", paper_bgcolor=c["bg"], plot_bgcolor=c["plot"],
+            xaxis=dict(title="Turn", gridcolor=c["grid"], dtick=1),
+            yaxis=dict(title="Projection", gridcolor=c["grid"], range=[y_min, y_max]),
+            height=240, margin=dict(l=50, r=45, t=10, b=40),
+            showlegend=False, font=dict(color=c["text"], size=11),
+            hoverlabel=dict(bgcolor=c["plot"], font_color=c["text"]),
+        )
+        return fig
+
+    def _build_demo_monitor_html(snapshots: list[dict], threshold: float) -> str:
+        """Build monitor HTML from serialised snapshot dicts."""
+        projs = [s["projection"] for s in snapshots]
+        n = len(projs)
+        latest = projs[-1]
+        drift_events = sum(1 for s in snapshots if s["drift_detected"])
+        mean_p = sum(projs) / n
+        velocity = projs[-1] - projs[-2] if n >= 2 else 0.0
+
+        col = _projection_color(latest, threshold)
+        vel_col = "#ef4444" if velocity < -0.1 else "#f59e0b" if velocity < 0 else "#22c55e"
+        drift_col = "#ef4444" if drift_events > 0 else "#22c55e"
+
+        return (
+            f"<div style='display:flex; gap:16px; flex-wrap:wrap; font-family:JetBrains Mono,monospace;'>"
+            f"<div style='flex:1; min-width:100px; text-align:center; padding:8px; "
+            f"background:#0f172a; border-radius:6px; border:1px solid #334155;'>"
+            f"<div style='color:#94a3b8; font-size:0.7em; text-transform:uppercase; letter-spacing:0.05em;'>Projection</div>"
+            f"<div style='color:{col}; font-size:1.6em; font-weight:700;'>{latest:.3f}</div></div>"
+            f"<div style='flex:1; min-width:100px; text-align:center; padding:8px; "
+            f"background:#0f172a; border-radius:6px; border:1px solid #334155;'>"
+            f"<div style='color:#94a3b8; font-size:0.7em; text-transform:uppercase; letter-spacing:0.05em;'>Velocity</div>"
+            f"<div style='color:{vel_col}; font-size:1.6em; font-weight:700;'>{velocity:+.3f}</div></div>"
+            f"<div style='flex:1; min-width:100px; text-align:center; padding:8px; "
+            f"background:#0f172a; border-radius:6px; border:1px solid #334155;'>"
+            f"<div style='color:#94a3b8; font-size:0.7em; text-transform:uppercase; letter-spacing:0.05em;'>Mean</div>"
+            f"<div style='color:#94a3b8; font-size:1.6em; font-weight:700;'>{mean_p:.3f}</div></div>"
+            f"<div style='flex:1; min-width:100px; text-align:center; padding:8px; "
+            f"background:#0f172a; border-radius:6px; border:1px solid #334155;'>"
+            f"<div style='color:#94a3b8; font-size:0.7em; text-transform:uppercase; letter-spacing:0.05em;'>Drift Events</div>"
+            f"<div style='color:{drift_col}; font-size:1.6em; font-weight:700;'>{drift_events}/{n}</div></div>"
+            f"</div>"
+        )
+
     def get_gpu_info_text() -> str:
         """Format GPU info for display."""
         info = get_gpu_info()
@@ -480,11 +653,13 @@ def create_app():
     .bot-row [data-testid="bot"] { background: #e2e8f0 !important; }
     .user-row [data-testid="user"] { background: #dbeafe !important; }
     #send-btn { min-height: 42px !important; }
-    .preset-info { border-left: 3px solid #3b82f6 !important; padding-left: 12px !important;
-        background: #1e293b !important; border-radius: 4px !important; }
+    .preset-info { background: #1e293b !important; border-radius: 4px !important; }
+    .preset-info .prose { padding: 0 !important; background: transparent !important; }
     .monitor-cards { margin-top: -8px !important; }
     /* Radio button labels - dark text on light pill backgrounds */
     .scenario-radio .wrap * { color: #0f172a !important; }
+    /* Remove borders on chat message prose spans (Gradio default) */
+    .chatbot .prose { border: none !important; }
     """
 
     with gr.Blocks(title="DRIFT", theme=theme, css=css) as app:
@@ -576,16 +751,31 @@ def create_app():
                                 "Send", variant="primary", scale=1,
                                 elem_id="send-btn",
                             )
-                        with gr.Accordion("Export session", open=False):
+                        with gr.Accordion("Session", open=False):
                             with gr.Row():
                                 export_fmt = gr.Dropdown(
                                     ["JSON", "CSV", "HTML"], value="JSON",
                                     label="Format", scale=1,
                                 )
                                 export_btn = gr.Button("Export", variant="secondary", scale=1)
-                                export_status = gr.Textbox(
-                                    label="Status", interactive=False, scale=2,
+                                save_demo_btn = gr.Button(
+                                    "\U0001f4be Save Demo", variant="secondary", scale=1,
                                 )
+                            with gr.Row():
+                                demo_dropdown = gr.Dropdown(
+                                    choices=list_demos(),
+                                    label="Saved Demos", scale=2,
+                                    allow_custom_value=False,
+                                )
+                                refresh_demos_btn = gr.Button(
+                                    "\u21bb", variant="secondary", scale=0, min_width=40,
+                                )
+                                load_demo_btn = gr.Button(
+                                    "Load Demo", variant="primary", scale=1,
+                                )
+                            session_io_status = gr.Textbox(
+                                label="Status", interactive=False,
+                            )
 
                     # Compute tab
                     with gr.TabItem("Compute", id="compute"):
@@ -668,7 +858,13 @@ def create_app():
             [chatbot, msg_input, trajectory_chart, monitor_html],
         )
 
-        export_btn.click(export_session, [export_fmt], [export_status])
+        export_btn.click(export_session, [export_fmt], [session_io_status])
+        save_demo_btn.click(save_demo_fn, [preset_radio], [session_io_status])
+        refresh_demos_btn.click(list_demos_fn, [], [demo_dropdown])
+        load_demo_btn.click(
+            load_demo_fn, [demo_dropdown],
+            [chatbot, trajectory_chart, monitor_html, session_io_status],
+        )
         compute_btn.click(compute_axis_fn, [compute_model, num_roles_slider], [compute_status])
         refresh_axes_btn.click(list_cached_axes, [], [axes_display])
         load_axis_btn.click(load_axis_fn, [model_dropdown], [axis_status])

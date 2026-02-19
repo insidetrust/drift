@@ -477,6 +477,43 @@ def scan(
 
 # ── web ───────────────────────────────────────────────────────────────────
 
+
+def _kill_port(port: int) -> None:
+    """Kill any process listening on *port* (best-effort, Windows + Unix)."""
+    import subprocess
+    import sys
+
+    try:
+        if sys.platform == "win32":
+            out = subprocess.check_output(
+                f"netstat -ano | findstr :{port}",
+                shell=True, text=True, stderr=subprocess.DEVNULL,
+            )
+            pids = set()
+            for line in out.strip().splitlines():
+                parts = line.split()
+                if "LISTENING" in parts:
+                    pids.add(parts[-1])
+            for pid in pids:
+                if pid and pid != "0":
+                    console.print(f"[yellow]Killing existing process on port {port} (PID {pid})[/yellow]")
+                    subprocess.run(
+                        f"taskkill /PID {pid} /F",
+                        shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                    )
+        else:
+            out = subprocess.check_output(
+                ["lsof", "-ti", f":{port}"],
+                text=True, stderr=subprocess.DEVNULL,
+            )
+            for pid in out.strip().splitlines():
+                if pid:
+                    console.print(f"[yellow]Killing existing process on port {port} (PID {pid})[/yellow]")
+                    subprocess.run(["kill", "-9", pid], stderr=subprocess.DEVNULL)
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        pass  # No process on port — nothing to kill
+
+
 @app.command()
 def web(
     host: str = typer.Option("127.0.0.1", "--host", help="Host to bind to"),
@@ -487,6 +524,7 @@ def web(
     try:
         from .web.app import create_app
 
+        _kill_port(port)
         app = create_app()
         app.launch(server_name=host, server_port=port, share=share)
     except ImportError:
