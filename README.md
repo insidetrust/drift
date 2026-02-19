@@ -280,18 +280,19 @@ Demos let you save a complete session snapshot — including the conversation, t
 
 The chatbot, trajectory chart, and monitor cards will all populate from the saved data. **You do not need a model loaded to view a demo** — this is purely replaying saved data.
 
+### Included Demo
+
+DRIFT ships with a pre-recorded demo of the **Drift To Insecure Code** preset — a 10-turn multi-phase attack that drifts from therapy rapport through developer stress into insecure code compliance. To view it:
+
+1. Start the web UI with `drift web` (no model needed)
+2. Open the **Session** accordion
+3. Click the refresh button, select the demo, and click **Load Demo**
+
+The demo was recorded on Qwen2.5-7B-Instruct with steering at -2.0. All 10 turns triggered drift events, with projections ranging from -90.5 to -27.5.
+
 ### Demo Files
 
-Demos are stored in the `demos/` directory at the project root:
-
-```
-demos/
-  therapy_drift_20260219_143022.demo.json
-  drift_to_insecure_code_20260219_150510.demo.json
-  freeform_20260219_161233.demo.json
-```
-
-You can share these files with anyone who has DRIFT installed. They just need to put the file in their `demos/` folder and load it from the web UI.
+Demos are stored in the `demos/` directory at the project root. You can share `.demo.json` files with anyone who has DRIFT installed — they just need to drop the file in their `demos/` folder and load it from the web UI.
 
 ---
 
