@@ -574,10 +574,21 @@ def create_app():
 
     # -- Build the UI --------------------------------------------------
 
-    # Discover local models
+    # Discover local models from common locations.
     import glob
-    local_models = sorted(glob.glob("D:/models/*/"))
-    model_choices = [p.rstrip("/\\") for p in local_models] + list(MODEL_CONFIGS.keys())
+
+    local_model_paths: set[str] = set()
+    search_roots = [
+        Path.cwd() / "models",
+        Path.home() / "models",
+        Path("D:/models"),
+    ]
+    for root in search_roots:
+        if root.exists():
+            for model_dir in glob.glob(str(root / "*/")):
+                local_model_paths.add(model_dir.rstrip("/\\"))
+
+    model_choices = sorted(local_model_paths) + list(MODEL_CONFIGS.keys())
 
     # Build preset choices with emoji labels
     preset_names = preset_mgr.list_names()

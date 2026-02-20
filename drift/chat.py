@@ -1,4 +1,4 @@
-"""Interactive chat session with steering and monitoring."""
+﻿"""Interactive chat session with steering and monitoring."""
 
 from __future__ import annotations
 
@@ -123,7 +123,10 @@ class DriftSession:
         """Toggle activation capping."""
         self.config.steering.capping_enabled = enabled
         if self.steerer:
-            self.steerer.enable_capping(enabled=enabled)
+            self.steerer.enable_capping(
+                enabled=enabled,
+                percentile=self.config.steering.capping_percentile,
+            )
         logger.info("Activation capping %s", "enabled" if enabled else "disabled")
 
     def reset(self) -> None:
@@ -131,6 +134,8 @@ class DriftSession:
         self.messages.clear()
         self.history.clear()
         self.turn_index = 0
+        if self.monitor:
+            self.monitor.reset()
 
     def export(self, path: Path, fmt: str = "json") -> None:
         """Export the session to a file."""
@@ -160,10 +165,23 @@ class DriftSession:
         elif fmt == "csv":
             import csv
 
+            fieldnames = [
+                "index",
+                "role",
+                "content",
+                "timestamp",
+                "projection",
+                "drift_detected",
+                "steering_coefficient",
+                "generation_time",
+            ]
+            if data["turns"]:
+                fieldnames = list(data["turns"][0].keys())
             with open(path, "w", newline="") as f:
-                writer = csv.DictWriter(f, fieldnames=data["turns"][0].keys())
+                writer = csv.DictWriter(f, fieldnames=fieldnames)
                 writer.writeheader()
-                writer.writerows(data["turns"])
+                if data["turns"]:
+                    writer.writerows(data["turns"])
         else:
             # Defer to report module for HTML
             from .report import DriftReport
@@ -273,7 +291,7 @@ def _handle_slash_command(session: DriftSession, cmd: str) -> None:
             manager = PresetManager()
             console.print("[bold]Available presets:[/bold]")
             for name, preset in manager.presets.items():
-                console.print(f"  [cyan]{name}[/cyan] — {preset.description}")
+                console.print(f"  [cyan]{name}[/cyan] - {preset.description}")
             return
         from .presets import PresetManager
 
@@ -304,14 +322,15 @@ def _handle_slash_command(session: DriftSession, cmd: str) -> None:
     elif command == "/help":
         console.print(
             "[bold]Commands:[/bold]\n"
-            "  /steer <val>   — Set steering coefficient (-5 to +5)\n"
-            "  /cap on|off    — Toggle activation capping\n"
-            "  /drift         — Show drift trajectory chart\n"
-            "  /preset <name> — Load a red-team preset\n"
-            "  /export <path> — Export session (json/csv/html)\n"
-            "  /reset         — Reset conversation\n"
-            "  /quit          — Exit"
+            "  /steer <val>   - Set steering coefficient (-5 to +5)\n"
+            "  /cap on|off    - Toggle activation capping\n"
+            "  /drift         - Show drift trajectory chart\n"
+            "  /preset <name> - Load a red-team preset\n"
+            "  /export <path> - Export session (json/csv/html)\n"
+            "  /reset         - Reset conversation\n"
+            "  /quit          - Exit"
         )
 
     else:
         console.print(f"[red]Unknown command: {command}. Type /help for options.[/red]")
+

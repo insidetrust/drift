@@ -67,6 +67,20 @@ class DriftSteerer:
         if not enabled:
             self._capping_threshold = None
             logger.info("Activation capping disabled")
+            return
+        if self._capping_threshold is None:
+            try:
+                self.compute_capping_threshold()
+            except Exception as e:
+                self.capping_enabled = False
+                self._capping_threshold = None
+                logger.warning("Failed to enable capping: %s", e)
+                return
+        logger.info(
+            "Activation capping enabled (p%.0f, threshold=%.4f)",
+            self.capping_percentile,
+            self._capping_threshold,
+        )
 
     def steer_and_generate(
         self, messages: list[dict[str, str]]

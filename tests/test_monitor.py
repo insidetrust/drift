@@ -118,3 +118,21 @@ def test_get_summary_with_data(monitor):
     assert "max_projection" in summary
     assert "mean_projection" in summary
     assert "threshold" in summary
+
+
+def test_reset_clears_state(monitor):
+    """reset clears snapshots and turn counter."""
+    monitor.record_turn(
+        [{"role": "user", "content": "test"}],
+        "response",
+    )
+    assert len(monitor.snapshots) == 1
+
+    monitor.reset()
+
+    assert monitor.snapshots == []
+    snap = monitor.record_turn(
+        [{"role": "user", "content": "test"}],
+        "response",
+    )
+    assert snap.turn_index == 0

@@ -468,7 +468,7 @@ Then run `drift web` again.
 
 ```bash
 pip install -e ".[dev]"
-pytest              # 40 tests, all CPU-only with mocked models
+pytest              # 33 tests, all CPU-only with mocked models
 ruff check drift/
 ```
 

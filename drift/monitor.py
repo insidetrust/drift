@@ -150,3 +150,8 @@ class DriftMonitor:
             "final_projection": projections[-1],
             "threshold": self.config.alert_threshold,
         }
+
+    def reset(self) -> None:
+        """Clear trajectory data for a fresh session/run."""
+        self.snapshots.clear()
+        self._turn_counter = 0
