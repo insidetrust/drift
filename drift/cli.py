@@ -1,4 +1,4 @@
-"""Typer CLI for DRIFT."""
+﻿"""Typer CLI for DRIFT."""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ from . import __version__
 
 app = typer.Typer(
     name="drift",
-    help="DRIFT — Deliberately Realign Inhibitions For Testing",
+    help="DRIFT - Deliberately Realign Inhibitions For Testing",
     no_args_is_help=True,
     rich_markup_mode="rich",
 )
@@ -47,10 +47,10 @@ def main(
         None, "--version", "-v", callback=version_callback, is_eager=True
     ),
 ) -> None:
-    """DRIFT — Deliberately Realign Inhibitions For Testing."""
+    """DRIFT - Deliberately Realign Inhibitions For Testing."""
 
 
-# ── chat ──────────────────────────────────────────────────────────────────
+# â”€â”€ chat â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 @app.command()
 def chat(
@@ -67,14 +67,14 @@ def chat(
     log_level: str = typer.Option("INFO", "--log-level", help="Log level"),
 ) -> None:
     """Start an interactive steered chat session."""
-    _setup_logging(log_level)
-
     from .config import DriftConfig, ModelConfig, MonitorConfig, SteeringConfig
 
     if config:
         from .config import load_config
         cfg = load_config(config)
+        _setup_logging(cfg.log_level)
     else:
+        _setup_logging(log_level)
         cfg = DriftConfig(
             model=ModelConfig(model_id=model, quantise=quantise),
             steering=SteeringConfig(
@@ -97,23 +97,32 @@ def chat(
     steerer = None
     monitor = None
 
-    if steer != 0.0 or axis:
+    should_load_axis = (
+        cfg.steering.coefficient != 0.0
+        or bool(axis)
+        or bool(cfg.steering.axis_path)
+        or bool(config and cfg.monitor.track_projections)
+    )
+    if should_load_axis:
         from .axes import AxisManager
         from .steering import DriftSteerer
 
         axis_mgr = AxisManager()
         if axis:
             axis_vector = axis_mgr.load_from_file(Path(axis))
+        elif cfg.steering.axis_source == "local" and cfg.steering.axis_path:
+            axis_vector = axis_mgr.load_from_file(Path(cfg.steering.axis_path))
         else:
             axis_vector = axis_mgr.load_from_huggingface(cfg.model.model_id)
 
         steerer = DriftSteerer(drift_model, axis_vector)
         steerer.set_coefficient(cfg.steering.coefficient)
         if cfg.steering.capping_enabled:
-            steerer.enable_capping(percentile=cfg.steering.capping_percentile)
+            steerer.enable_capping(enabled=True, percentile=cfg.steering.capping_percentile)
 
         from .monitor import DriftMonitor
-        monitor = DriftMonitor(drift_model, axis_vector, cfg.monitor)
+        if cfg.monitor.track_projections:
+            monitor = DriftMonitor(drift_model, axis_vector, cfg.monitor)
 
     # Load preset if specified
     from .chat import DriftSession, run_chat_loop
@@ -136,7 +145,7 @@ def chat(
     run_chat_loop(session)
 
 
-# ── info ──────────────────────────────────────────────────────────────────
+# â”€â”€ info â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 @app.command()
 def info() -> None:
@@ -149,7 +158,7 @@ def info() -> None:
     if gpu["cuda_available"]:
         for dev in gpu["devices"]:
             console.print(
-                f"  [{dev['index']}] {dev['name']} — "
+                f"  [{dev['index']}] {dev['name']} - "
                 f"{dev['total_gb']} GB total, {dev['free_gb']} GB free "
                 f"(compute {dev['compute_capability']})"
             )
@@ -186,7 +195,7 @@ def info() -> None:
     console.print(table)
 
 
-# ── init ──────────────────────────────────────────────────────────────────
+# â”€â”€ init â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 @app.command()
 def init() -> None:
@@ -211,7 +220,7 @@ def init() -> None:
     console.print("  [cyan]drift chat -c drift_config.yaml[/cyan]")
 
 
-# ── list-axes ─────────────────────────────────────────────────────────────
+# â”€â”€ list-axes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 @app.command("list-axes")
 def list_axes() -> None:
@@ -224,7 +233,7 @@ def list_axes() -> None:
     cached = mgr.list_cached()
     if cached:
         for ax in cached:
-            console.print(f"  [cyan]{ax['model_id']}[/cyan] — layer {ax.get('target_layer', '?')}")
+            console.print(f"  [cyan]{ax['model_id']}[/cyan] - layer {ax.get('target_layer', '?')}")
     else:
         console.print("  [dim]No cached axes. Use 'drift compute-axis' or download from HuggingFace.[/dim]")
 
@@ -237,7 +246,7 @@ def list_axes() -> None:
         console.print("  [dim]lu-christina/assistant-axis-vectors[/dim]")
 
 
-# ── compute-axis ──────────────────────────────────────────────────────────
+# â”€â”€ compute-axis â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 @app.command("compute-axis")
 def compute_axis(
@@ -271,7 +280,7 @@ def compute_axis(
     console.print(f"[green]Axis saved to {out_path}[/green]")
 
 
-# ── list-presets ──────────────────────────────────────────────────────────
+# â”€â”€ list-presets â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 @app.command("list-presets")
 def list_presets() -> None:
@@ -287,13 +296,13 @@ def list_presets() -> None:
     table.add_column("Steering", justify="right")
 
     for name, preset in mgr.presets.items():
-        steer = f"{preset.suggested_steering:+.1f}" if preset.suggested_steering is not None else "—"
+        steer = f"{preset.suggested_steering:+.1f}" if preset.suggested_steering is not None else "n/a"
         table.add_row(name, preset.description, str(len(preset.steps)), steer)
 
     console.print(table)
 
 
-# ── run-preset ────────────────────────────────────────────────────────────
+# â”€â”€ run-preset â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 @app.command("run-preset")
 def run_preset(
@@ -392,90 +401,9 @@ def run_preset(
         console.print(f"\n[green]Results exported to {output}[/green]")
 
 
-# ── scan ──────────────────────────────────────────────────────────────────
+# â”€â”€ scan â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-@app.command()
-def scan(
-    model: str = typer.Option(
-        "meta-llama/Llama-3.1-8B-Instruct", "-m", "--model",
-    ),
-    quantise: bool = typer.Option(True, "--quantise/--no-quantise"),
-    payloads: Path = typer.Option(..., "-p", "--payloads", help="SPICE manifest.json or CSV file"),
-    steering_range: str = typer.Option(
-        "-3,-1,0,1,3", "--steering-range", "-r",
-        help="Comma-separated steering coefficients to test",
-    ),
-    axis: Optional[str] = typer.Option(None, "--axis", "-a"),
-    output: Optional[Path] = typer.Option(None, "-o", "--output", help="Output directory"),
-    log_level: str = typer.Option("INFO", "--log-level"),
-) -> None:
-    """Run a SPICE payload scan across steering coefficients."""
-    _setup_logging(log_level)
-
-    from .config import DriftConfig, ModelConfig, MonitorConfig, SteeringConfig
-    from .models import DriftModel
-    from .spice_bridge import SpiceBridge
-
-    coefficients = [float(c.strip()) for c in steering_range.split(",")]
-
-    cfg = DriftConfig(
-        model=ModelConfig(model_id=model, quantise=quantise),
-        steering=SteeringConfig(
-            axis_source="local" if axis else "huggingface",
-            axis_path=axis or "",
-        ),
-        monitor=MonitorConfig(track_projections=True),
-        log_level=log_level,
-    )
-
-    drift_model = DriftModel.load(cfg.model)
-
-    from .axes import AxisManager
-    from .steering import DriftSteerer
-
-    axis_mgr = AxisManager()
-    if axis:
-        axis_vector = axis_mgr.load_from_file(Path(axis))
-    else:
-        axis_vector = axis_mgr.load_from_huggingface(cfg.model.model_id)
-
-    steerer = DriftSteerer(drift_model, axis_vector)
-
-    from .monitor import DriftMonitor
-    monitor = DriftMonitor(drift_model, axis_vector, cfg.monitor)
-
-    from .chat import DriftSession
-
-    bridge = SpiceBridge()
-    if str(payloads).endswith(".json"):
-        payload_list = bridge.load_manifest(payloads)
-    else:
-        payload_list = bridge.load_csv(payloads)
-
-    console.print(f"[bold]SPICE Scan[/bold]")
-    console.print(f"  Model: [cyan]{model}[/cyan]")
-    console.print(f"  Payloads: {len(payload_list)}")
-    console.print(f"  Steering range: {coefficients}\n")
-
-    session = DriftSession(drift_model, cfg, steerer, monitor)
-    results = bridge.run_scan(session, payload_list, coefficients)
-
-    # Output
-    out_dir = output or Path("drift_scan_results")
-    out_dir.mkdir(parents=True, exist_ok=True)
-
-    from .report import SpiceScanReport
-
-    report = SpiceScanReport(results, model_id=model, coefficients=coefficients)
-    report.write_json(out_dir / "scan_results.json")
-    report.write_csv(out_dir / "scan_results.csv")
-    report.write_html(out_dir / "scan_report.html")
-
-    console.print(f"\n[green]Scan complete. Results in {out_dir}/[/green]")
-    report.print_summary(console)
-
-
-# ── web ───────────────────────────────────────────────────────────────────
+# â”€â”€ web â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 
 def _kill_port(port: int) -> None:
@@ -511,7 +439,7 @@ def _kill_port(port: int) -> None:
                     console.print(f"[yellow]Killing existing process on port {port} (PID {pid})[/yellow]")
                     subprocess.run(["kill", "-9", pid], stderr=subprocess.DEVNULL)
     except (subprocess.CalledProcessError, FileNotFoundError):
-        pass  # No process on port — nothing to kill
+        pass  # No process on port; nothing to kill
 
 
 @app.command()
@@ -537,3 +465,5 @@ def web(
 
 if __name__ == "__main__":
     app()
+
+

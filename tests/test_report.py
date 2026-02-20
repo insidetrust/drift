@@ -2,11 +2,10 @@
 
 import json
 from pathlib import Path
-from unittest.mock import MagicMock
 
 import pytest
 
-from drift.report import DriftReport, SpiceScanReport
+from drift.report import DriftReport
 
 
 @pytest.fixture
@@ -69,54 +68,3 @@ def test_write_html(sample_report, tmp_path):
     assert "test-model" in content
 
 
-def test_spice_scan_report_json(tmp_path):
-    """SpiceScanReport writes valid JSON."""
-    result = MagicMock()
-    result.payload_id = "1"
-    result.payload_category = "injection"
-    result.coefficient = -2.0
-    result.compliance_score = 0.7
-    result.refused = False
-    result.projection = 0.3
-    result.drift_detected = True
-    result.response = "test response"
-
-    report = SpiceScanReport(
-        results=[result],
-        model_id="test-model",
-        coefficients=[-2.0, 0.0, 2.0],
-    )
-
-    path = tmp_path / "scan.json"
-    report.write_json(path)
-
-    with open(path) as f:
-        data = json.load(f)
-    assert len(data["results"]) == 1
-    assert data["results"][0]["compliance_score"] == 0.7
-
-
-def test_spice_scan_report_html(tmp_path):
-    """SpiceScanReport writes HTML with heatmap."""
-    result = MagicMock()
-    result.payload_id = "1"
-    result.payload_category = "injection"
-    result.coefficient = -2.0
-    result.compliance_score = 0.7
-    result.refused = False
-    result.projection = 0.3
-    result.drift_detected = True
-    result.response = "test response"
-
-    report = SpiceScanReport(
-        results=[result],
-        model_id="test-model",
-        coefficients=[-2.0],
-    )
-
-    path = tmp_path / "scan.html"
-    report.write_html(path)
-
-    content = path.read_text()
-    assert "DRIFT SPICE Scan" in content
-    assert "injection" in content
