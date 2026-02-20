@@ -2,7 +2,7 @@
 
 Persona drift security testing for LLMs using activation steering.
 
-DRIFT wraps the Anthropic [Assistant Axis](https://arxiv.org/abs/2601.10387) research into a practical red-team tool: interactive steered chat, real-time drift monitoring, automated preset scenarios, and custom axis computation — all on consumer GPUs via 4-bit quantisation.
+DRIFT wraps the Anthropic [Assistant Axis](https://arxiv.org/abs/2601.10387) research into a toy project you can play with locally: interactive steered chat, real-time drift monitoring, automated preset scenarios, and custom axis computation — all on consumer GPUs via 4-bit quantisation - I ran tests on a laptop. So, now you can play with AI model personas, Angels and Demons, Secure Coders and Fantasy Authors.
 
 ![DRIFT Web UI](docs/drift_ui.png)
 
