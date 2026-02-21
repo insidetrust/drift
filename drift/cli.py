@@ -454,7 +454,10 @@ def web(
 
         _kill_port(port)
         app = create_app()
-        app.launch(server_name=host, server_port=port, share=share)
+        app.launch(
+            server_name=host, server_port=port, share=share,
+            theme=app._drift_theme, css=app._drift_css,
+        )
     except ImportError:
         console.print(
             "[red]Gradio not installed. Install with:[/red]\n"

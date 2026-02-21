@@ -27,6 +27,16 @@ PRESET_EMOJI = {
     "drift_to_insecure_code": "\U0001f510",  # locked with key
 }
 
+# Human-readable display names for presets
+PRESET_DISPLAY = {
+    "therapy_drift": "Emotional Manipulation",
+    "roleplay_exploit": "Character Lock",
+    "sycophancy": "Sycophancy",
+    "authority_compliance": "Fake Admin Override",
+    "meta_reflection": "AI Consciousness",
+    "drift_to_insecure_code": "Insecure Code via Rapport",
+}
+
 
 def create_app():
     """Create and return the Gradio Blocks app."""
@@ -264,9 +274,9 @@ def create_app():
             "threshold": "#ef4444",
             "fill": "rgba(59,130,246,0.1)",
             # Danger zone bands (assistant-axis style)
-            "zone_safe": "rgba(34,197,94,0.07)",
-            "zone_warn": "rgba(245,158,11,0.07)",
-            "zone_danger": "rgba(239,68,68,0.07)",
+            "zone_safe": "rgba(34,197,94,0.15)",
+            "zone_warn": "rgba(245,158,11,0.15)",
+            "zone_danger": "rgba(239,68,68,0.15)",
         }
 
     def create_trajectory_chart() -> Any:
@@ -296,14 +306,14 @@ def create_app():
         # Zone labels on the right edge
         x_max = max(turns) + 0.5
         fig.add_annotation(x=x_max, y=y_max * 0.5, text="SAFE",
-                           showarrow=False, font=dict(size=9, color=c["safe"]),
-                           xanchor="right", opacity=0.6)
+                           showarrow=False, font=dict(size=12, color=c["safe"]),
+                           xanchor="right", opacity=0.8)
         fig.add_annotation(x=x_max, y=warn_y * 0.5, text="WARN",
-                           showarrow=False, font=dict(size=9, color=c["warn"]),
-                           xanchor="right", opacity=0.6)
+                           showarrow=False, font=dict(size=12, color=c["warn"]),
+                           xanchor="right", opacity=0.8)
         fig.add_annotation(x=x_max, y=(y_min + warn_y) * 0.5, text="DRIFT",
-                           showarrow=False, font=dict(size=9, color=c["drift"]),
-                           xanchor="right", opacity=0.6)
+                           showarrow=False, font=dict(size=12, color=c["drift"]),
+                           xanchor="right", opacity=0.8)
 
         # Fill area under curve
         fig.add_trace(go.Scatter(
@@ -343,7 +353,7 @@ def create_app():
             xaxis=dict(title="Turn", gridcolor=c["grid"], dtick=1),
             yaxis=dict(title="Projection", gridcolor=c["grid"],
                        range=[y_min, y_max]),
-            height=240,
+            height=300,
             margin=dict(l=50, r=45, t=10, b=40),
             showlegend=False,
             font=dict(color=c["text"], size=11),
@@ -361,7 +371,7 @@ def create_app():
             plot_bgcolor=c["plot"],
             xaxis=dict(title="Turn", gridcolor=c["grid"]),
             yaxis=dict(title="Projection", gridcolor=c["grid"]),
-            height=220,
+            height=300,
             margin=dict(l=50, r=20, t=10, b=40),
             font=dict(color=c["text"], size=11),
             annotations=[dict(
@@ -460,14 +470,14 @@ def create_app():
 
         x_max = max(turns) + 0.5
         fig.add_annotation(x=x_max, y=y_max * 0.5, text="SAFE",
-                           showarrow=False, font=dict(size=9, color=c["safe"]),
-                           xanchor="right", opacity=0.6)
+                           showarrow=False, font=dict(size=12, color=c["safe"]),
+                           xanchor="right", opacity=0.8)
         fig.add_annotation(x=x_max, y=warn_y * 0.5, text="WARN",
-                           showarrow=False, font=dict(size=9, color=c["warn"]),
-                           xanchor="right", opacity=0.6)
+                           showarrow=False, font=dict(size=12, color=c["warn"]),
+                           xanchor="right", opacity=0.8)
         fig.add_annotation(x=x_max, y=(y_min + warn_y) * 0.5, text="DRIFT",
-                           showarrow=False, font=dict(size=9, color=c["drift"]),
-                           xanchor="right", opacity=0.6)
+                           showarrow=False, font=dict(size=12, color=c["drift"]),
+                           xanchor="right", opacity=0.8)
 
         fig.add_trace(go.Scatter(
             x=turns, y=projections,
@@ -489,7 +499,7 @@ def create_app():
             template="plotly_dark", paper_bgcolor=c["bg"], plot_bgcolor=c["plot"],
             xaxis=dict(title="Turn", gridcolor=c["grid"], dtick=1),
             yaxis=dict(title="Projection", gridcolor=c["grid"], range=[y_min, y_max]),
-            height=240, margin=dict(l=50, r=45, t=10, b=40),
+            height=300, margin=dict(l=50, r=45, t=10, b=40),
             showlegend=False, font=dict(color=c["text"], size=11),
             hoverlabel=dict(bgcolor=c["plot"], font_color=c["text"]),
         )
@@ -593,13 +603,13 @@ def create_app():
     # Build preset choices with emoji labels
     preset_names = preset_mgr.list_names()
     preset_radio_choices = ["None (free chat)"] + [
-        f"{PRESET_EMOJI.get(n, chr(0x1f9ea))} {n.replace('_', ' ').title()}"
+        f"{PRESET_EMOJI.get(n, chr(0x1f9ea))} {PRESET_DISPLAY.get(n, n.replace('_', ' ').title())}"
         for n in preset_names
     ]
     # Map display labels back to preset keys
     preset_label_to_key = {"None (free chat)": "None"}
     for n in preset_names:
-        label = f"{PRESET_EMOJI.get(n, chr(0x1f9ea))} {n.replace('_', ' ').title()}"
+        label = f"{PRESET_EMOJI.get(n, chr(0x1f9ea))} {PRESET_DISPLAY.get(n, n.replace('_', ' ').title())}"
         preset_label_to_key[label] = n
 
     def _resolve_preset(label: str) -> str:
@@ -671,9 +681,14 @@ def create_app():
     .scenario-radio .wrap * { color: #0f172a !important; }
     /* Remove borders on chat message prose spans (Gradio default) */
     .chatbot .prose { border: none !important; }
+    /* Keep analysis column from collapsing on narrow viewports */
+    .analysis-col { min-width: 340px !important; }
+    @media (max-width: 900px) {
+        .analysis-col { min-width: 100% !important; }
+    }
     """
 
-    with gr.Blocks(title="DRIFT", theme=theme, css=css) as app:
+    with gr.Blocks(title="DRIFT") as app:
         gr.Markdown(
             "# <span style='color: #60a5fa'>DRIFT</span> "
             "\u2014 Deliberately Realign Inhibitions For Testing\n"
@@ -710,7 +725,13 @@ def create_app():
                     label="Coefficient",
                     info="Negative = push away from assistant persona",
                 )
-                capping_toggle = gr.Checkbox(value=False, label="Activation Capping")
+                capping_toggle = gr.Checkbox(
+                    value=False, label="Activation Capping",
+                    info="Floor on drift — only intervenes when projection drops below threshold",
+                )
+
+                start_btn = gr.Button("Start Session", variant="primary", size="sm")
+                session_status = gr.Textbox(label="Session", interactive=False, lines=1)
 
                 # Scenario section (Neuronpedia-style radio pills)
                 gr.Markdown("<p class='panel-heading'>Scenario</p>")
@@ -725,8 +746,6 @@ def create_app():
                     value="",
                     elem_classes=["preset-info"],
                 )
-                start_btn = gr.Button("Start Session", variant="primary", size="sm")
-                session_status = gr.Textbox(label="Session", interactive=False, lines=1)
 
                 # Monitor section (moved to below chart in main area)
 
@@ -735,33 +754,52 @@ def create_app():
                 with gr.Tabs():
                     # Chat tab
                     with gr.TabItem("Chat", id="chat"):
-                        chatbot = gr.Chatbot(
-                            label="Conversation", height=380,
-                            placeholder=(
-                                "Load a model, select a scenario, and start a session to begin.\n\n"
-                                "The drift trajectory chart below tracks how far the model's "
-                                "activations shift from the assistant persona on each turn."
-                            ),
-                        )
-                        trajectory_chart = gr.Plot(
-                            label="Drift Trajectory",
-                            value=create_empty_chart(),
-                        )
-                        monitor_html = gr.HTML(
-                            value="<div style='color:#64748b; text-align:center; padding:8px; "
-                                  "font-family:JetBrains Mono,monospace; font-size:0.85em;'>"
-                                  "Send a message to see live projection metrics</div>",
-                        )
-                        with gr.Row():
-                            msg_input = gr.Textbox(
-                                placeholder="Type a message\u2026",
-                                scale=5, lines=1,
-                                show_label=False,
-                            )
-                            send_btn = gr.Button(
-                                "Send", variant="primary", scale=1,
-                                elem_id="send-btn",
-                            )
+                        with gr.Row(equal_height=False):
+                            # Left column: conversation + input
+                            with gr.Column(scale=3, min_width=400):
+                                chatbot = gr.Chatbot(
+                                    label="Conversation", height=520,
+                                    placeholder=(
+                                        "Load a model, select a scenario, "
+                                        "and start a session to begin.\n\n"
+                                        "The drift trajectory chart on the right "
+                                        "tracks how far the model's activations "
+                                        "shift from the assistant persona on each turn."
+                                    ),
+                                )
+                                with gr.Row():
+                                    msg_input = gr.Textbox(
+                                        placeholder="Type a message\u2026",
+                                        scale=5, lines=1,
+                                        show_label=False,
+                                    )
+                                    send_btn = gr.Button(
+                                        "Send", variant="primary", scale=1,
+                                        elem_id="send-btn",
+                                    )
+
+                            # Right column: chart + metrics (always visible)
+                            with gr.Column(scale=2, min_width=340,
+                                           elem_classes=["analysis-col"]):
+                                gr.Markdown(
+                                    "<span style='color:#94a3b8; font-size:0.8em'>"
+                                    "Projection measures alignment to the assistant persona. "
+                                    "Positive = <span style='color:#22c55e'>safe</span>, "
+                                    "near zero = <span style='color:#f59e0b'>warning</span>, "
+                                    "negative = <span style='color:#ef4444'>drifting</span>."
+                                    "</span>"
+                                )
+                                trajectory_chart = gr.Plot(
+                                    label="Drift Trajectory",
+                                    value=create_empty_chart(),
+                                )
+                                monitor_html = gr.HTML(
+                                    value="<div style='color:#64748b; text-align:center; padding:8px; "
+                                          "font-family:JetBrains Mono,monospace; font-size:0.85em;'>"
+                                          "Send a message to see live projection metrics</div>",
+                                )
+
+                        # Session accordion below both columns
                         with gr.Accordion("Session", open=False):
                             with gr.Row():
                                 export_fmt = gr.Dropdown(
@@ -880,9 +918,12 @@ def create_app():
         refresh_axes_btn.click(list_cached_axes, [], [axes_display])
         load_axis_btn.click(load_axis_fn, [model_dropdown], [axis_status])
 
+    # Store theme/css for launch() — Gradio 6 moved these from Blocks() to launch()
+    app._drift_theme = theme
+    app._drift_css = css
     return app
 
 
 if __name__ == "__main__":
     app = create_app()
-    app.launch()
+    app.launch(theme=app._drift_theme, css=app._drift_css)
